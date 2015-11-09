@@ -9,7 +9,8 @@
     .data
     inputKey: .asciiz "Entrez une cl� d'encodage (50 caract�res maximum): "
     chosenKey: .asciiz "La cl� choisie est : "
-    cryptChoice: .asciiz "Voulez vous encoder un fichier texte (Entrez 1) ou une phrase (2): "
+    firstMenu: .asciiz "Voulez vous encoder (Entrez 1) ou decoder (Entrez 2): "
+    cryptChoice: .asciiz "Voulez vous encoder un fichier texte (Entrez 1) ou une phrase (Entrez 2): "
     inputText: .asciiz "\nVeuillez saisir le texte � encoder: "
     text: .space 100
     key: .space 50
@@ -25,16 +26,22 @@
      
     main:
             # Appel des routines
+            jal menu
+            move $s1,$t1
             jal input
             jal affichage
             jal typeEncodageChoix
+            # beq $t1,2,cryptfile ## A MAPPER AVEC INPUT DE FICHIERS .TXT
             beq $t1,2,cryptText
+            beq $s1,1,encoder
+            beq $s1,2,decoder
+            
             #jal encode2
 		#la $t0,keyArray
 		#lb $a0,1($t0)
 		#li $v0,1
 		#syscall
-		jal encoder
+		
             # Fin du programme
             j end
             li $v0,10
@@ -43,6 +50,14 @@
     #################### INTERACTIONS UTILISATEUR ###########################
     #########################################################################
      
+    menu:
+    	la $a0, firstMenu
+    	la $v0,4
+    	syscall
+    	la $v0,5
+    	syscall
+    	la $t1,($v0)
+    	jr $ra
     # Routine demandant � l'utilisateur de saisir une cl� d'encryption
     # Sortie: $t0 : String, Cl� d'encryption
     input:
@@ -131,7 +146,7 @@
 	jr $ra
 		
     #########################################################
-    #################### ENCODAGE ###########################		FAUX !
+    #################### ENCODAGE ###########################
     #########################################################
     
     # Cl� stock�e dans un tableau keyArray
@@ -160,6 +175,7 @@
 		la $a0,($t4) # On affiche la valeur de t3 (cl�)
 		li $v0,11
 		syscall
+		sb $a0,encode
 		# VISIBILITE
 		#li $a0,0
 		#li $v0,1
@@ -167,7 +183,45 @@
 		bne $t3,10,for3 #On boucle tant que t2 n'est pas fini (texte)
 		j end
 		
-	
+		
+#########################################################
+#################### DECODAGE ###########################
+#########################################################
+    
+    # Cl� stock�e dans un tableau keyArray
+    # Texte stock� dans un tableau textArray
+ 	decoder:
+ 		la $t0,textArray # TEXT ARRAY
+ 		la $t1,keyArray # KEY ARRAY
+ 		la $t2,encode
+	reset2: 
+		la $t1,keyArray
+	for4:	
+		lb $t3,($t0) # On prends la valeur courante de textArray et on la met dans $t2
+		lb $t4,($t1) # On prends la valeur de la cl� courante
+		beq $t4,10,reset2
+		addiu $t1,$t1,1 # On incr�mente les deux
+		addiu $t0,$t0,1	
+		beq $t3,10,end	
+		# t4 VALEUR DE CLE ASSOCIE A CARACTERE COURANT 
+		# OPERATIONS ICI
+		neg $t4,$t4
+		add $t4,$t3,$t4
+		blez $t4,plus2
+		jal next
+	plus2:
+		addiu $t4,$t4,94 # Si $t4 est <= 0, on fait +94
+	next2:
+		la $a0,($t4) # On affiche la valeur de t4 (cl�)
+		li $v0,11
+		syscall
+		
+		# VISIBILITE
+		#li $a0,0
+		#li $v0,1
+		#syscall
+		bne $t3,10,for4 #On boucle tant que t2 n'est pas fini (texte)
+		j end
 		
 	
 		
