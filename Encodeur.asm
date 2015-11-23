@@ -1,17 +1,20 @@
-	
+# AFONSO Benjamin - Projet Archi IG3 par David 'MASTER OF MIPS' DELAHAYE
+# Nom du Programme: CrypterVigenere.asm
+# Specification: Encode/Decode une phrase ou un fichier texte d'après le principe de chiffrement de Vigenere. Sur la table ASCII Standard
+# Implementation: MIPS Assembly
 
-    # Saisie de la clï¿½ par l'utilisateur
-    # Texte d'entrï¿½e ï¿½ encoder :
-            # Saisi par l'utilisateur
-            # Via un fichier texte
-    # Encodage
-     
+    #########################################################################
+    ####################### ALLOCATIONS MEMOIRES ############################
+    #########################################################################    
+    
     .data
     inputKey: .asciiz "Entrez une cle d'encodage (50 caracteres maximum): "
     chosenKey: .asciiz "La cle choisie est : "
     firstMenu: .asciiz "Voulez vous encoder (Entrez 1) ou decoder (Entrez 2): "
     cryptChoice: .asciiz "Voulez vous encoder un fichier texte (Entrez 1) ou une phrase (Entrez 2): "
     inputText: .asciiz "\nVeuillez saisir le texte: "
+    textFile: .asciiz "\nVeuillez saisir le fichier texte: "
+    inputFile: .space 50
     text: .space 100
     key: .space 50
     keyArray: .space 50
@@ -31,7 +34,7 @@
             jal input
             jal affichage
             jal typeEncodageChoix
-            # beq $t1,2,cryptfile ## A MAPPER AVEC INPUT DE FICHIERS .TXT
+            beq $t1,1,cryptFile
             beq $t1,2,cryptText
             beq $s1,1,encoder
             beq $s1,2,decoder
@@ -53,6 +56,11 @@
     	syscall
     	la $t1,($v0)
     	jr $ra
+    	
+    #########################################################
+    ########## DEMANDE DE LA CLE A L'UTILISATEUR ############
+    #########################################################	
+    
     # Routine demandant a l'utilisateur de saisir une cle d'encryption
     # Sortie: $t0 : String, Cle d'encryption
     input:
@@ -72,7 +80,9 @@
 	jr $ra		# Jump a la routine principale
 		
            
-     
+    #########################################################
+    ############# AFFIACHAGE DE LA CLE CHOISIE ##############
+    #########################################################	     
     #  Routine affichant le choix de l'utilisateur pour la clï¿½    
     affichage:
             la $a0,chosenKey
@@ -83,7 +93,11 @@
             syscall
             jr $ra
      
-    # Routine demandant a l'utilisateur s'il veut encoder une phrase ou un fichier texte  
+    #########################################################
+    ############### CHOIX DU TYPE D'ENCODAGE ################
+    #########################################################	
+    # Routine demandant a l'utilisateur s'il veut encoder une phrase ou un fichier texte 
+     
     typeEncodageChoix:
             la $a0,cryptChoice
             li $v0,4
@@ -94,33 +108,90 @@
             jr $ra
            
            
-    # Encryption d'une phrase choisie      
+    #########################################################
+    ############## RECUPERATION D'UNE PHRASE ################
+    #########################################################	
+       
     cryptText:
     	subi $sp , $sp , 4
 	sw $ra , ( $sp )
 
-        la $a0,inputText	# On demande la saisie d'un texte a l'utilisateur
+        la $a0,inputText	
         li $v0,4
-        syscall
+        syscall		# On demande la saisie d'un texte a l'utilisateur
         li $a1,100
-        la $a0,text	# On stock la phrase dans l'adresse de text (100 octets maximum)
+        la $a0,text	
         li $v0,8
-        syscall
+        syscall		# On stock la phrase dans l'adresse de text (100 octets maximum)
         la $a1, textArray	# On prepare l'adresse d'accueil (Le tableau)
  	jal stockInArray	# On stock le texte dans le tableau TextArray
  	la $a0, textArray
  	li $v0, 4
- 	syscall
+ 	syscall		# On affiche le contenu du tableau (phrase originale)
  	
 	lw $ra , ( $sp )
 	addi $sp , $sp , 4
 	jr $ra
 	
+   #########################################################
+   ###############  RECUPERATION D'UN FICHIER ##############
+   #########################################################			
+
+
+	cryptFile:
+		subi $sp, $sp, 4
+		sw $ra,( $sp )
+		
+		li $v0, 4
+		la $a0, textFile			
+		syscall # Affichage de la demande du fichier text
+		li $v0, 8
+		la $a0, inputFile
+		la $a1, 50
+		syscall # Récupération du nom du fichier saisi par l'utilisateur
+		
+		li $v0, 13	
+		li $a1, 0
+		li $a2,0
+		syscall		# Ouverture du fichier (nom dans $a0)
+		la $s0,($v0)	# File descriptor dans $s0
+		
+
+				
+		la $a0,($s0)
+		li $v0, 14
+		la $a1, text	# Input buffer
+		li $a2, 100 # Changer pour 1000
+		syscall 	#Lire les 1000 premiers caractères du fichier
+		la $a0,text
+		la $a1, textArray
+		jal stockInArray	#appelle la routine pour stocker le contenu du fichier		
+			
+		la $a0,($s0)
+		li $v0, 16	
+		syscall		# Fermeture du fichier
+		
+		la $a0, textArray
+ 		li $v0, 4
+ 		syscall
+ 		
+ 		# BOUCLE INFINIEMENT
+ 		#j end
+ 		# A RETIRER
+ 		
+		lw $ra , ( $sp )
+		addi $sp , $sp , 4
+		jr $ra
+		
+    #########################################################
+    ############### STOCKER DANS UN TABLEAU #################
+    #########################################################	
+    	
     stockInArray:
     	move $t0,$a0 #t0 :: TEXT
     	move $t1,$a1 #t1 :: ARRAY
     	
-    for2:
+    for2:		# On boucle tant qu'on a pas rencontre le caractere zero. Fin de texte.
   	lb $t2, ($t0)
 	sb $t2, ($t1)
 	addiu $t0, $t0, 1
@@ -128,6 +199,10 @@
 	bnez $t2,for2
 	move $v0, $t1
 	jr $ra
+		
+ 
+
+
 		
     #########################################################
     #################### ENCODAGE ###########################
@@ -149,6 +224,7 @@
 		addiu $t0,$t0,1	
 		beq $t3,10,end	
 
+		# Modulo + Offset avec des additions / soustractions
 		add $t4,$t4,$t3
 		bge $t4,220,plus2
 		bge $t4,127,plus
@@ -162,13 +238,9 @@
 	next:
 		la $a0,($t4) # On affiche la valeur de t3 (cle)
 		li $v0,11
-		syscall
+		syscall		# On affiche la lettre encodee
 		sb $a0,encode
 		
-		# VISIBILITE
-		#li $a0,0
-		#li $v0,1
-		#syscall
 		bne $t3,10,for3 #On boucle tant que t2 n'est pas fini (texte)
 		j end
 		
@@ -192,8 +264,8 @@
 		addiu $t1,$t1,1 # On incrï¿½mente les deux
 		addiu $t0,$t0,1	
 		beq $t3,10,end	
-		# t4 VALEUR DE CLE ASSOCIE A CARACTERE COURANT 
-		# OPERATIONS ICI
+		
+		# Modulo + Offset avec des additions / soustractions
 		neg $t4,$t4
 		add $t4,$t3,$t4
 		ble $t4,-63,plus3 
@@ -207,12 +279,9 @@
 	next2:
 		la $a0,($t4) # On affiche la valeur de t4
 		li $v0,11
-		syscall
+		syscall		# On affiche la lettre decodee
 		
-		# VISIBILITE (Affichage du scancode (ASCII) correspondant Ci dessous)
-		#li $a0,0
-		#li $v0,1
-		#syscall
+
 		bne $t3,10,for4	 #On boucle tant que t2 n'est pas fini (texte)
 		j end
 		
